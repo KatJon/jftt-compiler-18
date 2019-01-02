@@ -1,4 +1,6 @@
-module Language.Token where
+module Language.Syntax.Token where
+
+import Language.Common
 
 data Token
     -- Keywords
@@ -26,7 +28,7 @@ data Token
 
     -- Values and ids
     | VAL Integer
-    | ID String
+    | ID (String, Position)
     
     -- Other
     | SEMI -- ;
@@ -35,11 +37,10 @@ data Token
     | RPAR -- )
 
     -- Technical tokens
+    | ID__ String
     | WS__ -- whitespace
     | EOF__ -- EOF
     deriving (Show, Eq)
-
-type Position = (Int, Int)
 
 data TokenInfo = TI Token Position
     deriving (Show, Eq)
@@ -48,4 +49,4 @@ numberToken :: String -> Int -> Token
 numberToken s len = VAL . read $ take len s
 
 idToken :: String -> Int -> Token
-idToken s len = ID $ take len s
+idToken s len = ID__ $ take len s

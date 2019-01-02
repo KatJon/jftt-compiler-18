@@ -1,7 +1,10 @@
 {
-module Language.Lexer where
 
-import Language.Token
+module Language.Syntax.Lexer where
+
+import Language.Syntax.Token as T
+
+-- type ParserT s e a = (MonadState s m, MonadError e m) => m a
 
 }
 
@@ -9,12 +12,13 @@ import Language.Token
 
 @number = 0|[1-9][0-9]*
 @identifier = [_a-z]+
+@commentContent = [^\]]|\n
 
 tokens :- 
     -- Comments
-    <0>     "[" { begin com }
-    <com>   [^\]]|\n ;
-    <com>   "]" { begin 0 }
+    <0>     "[" { constToken WS__ `andBegin` com }
+    <com>   @commentContent+ { constToken WS__ }
+    <com>   "]" {  constToken WS__ `andBegin` 0 }
 
     -- Omitting whitespace
     <0>     $white { constToken WS__ } 
@@ -51,11 +55,11 @@ tokens :-
     <0>     "*" { constToken MUL }
     <0>     "/" { constToken DIV }
     <0>     "%" { constToken MOD }
-    <0>     "=" { constToken Language.Token.EQ }
+    <0>     "=" { constToken T.EQ }
     <0>     "!=" { constToken NEQ }
-    <0>     "<" { constToken Language.Token.LT }
+    <0>     "<" { constToken T.LT }
     <0>     "<=" { constToken LEQ }
-    <0>     ">" { constToken Language.Token.GT }
+    <0>     ">" { constToken T.GT }
     <0>     ">=" { constToken GEQ }
 
     -- Values and ids
@@ -91,25 +95,18 @@ constToken t _ _ = return t
 alexEOF :: Alex Token
 alexEOF = return EOF__
 
-lexer :: String -> Either String [Token]
-lexer str = runAlex str $ do
-    let loop s = do 
-        tok <- alexMonadScan
-        if tok == EOF__
-            then return $ reverse s
-            else do loop $ (tok : s)
-    loop []
-
 lexerTI :: String -> Either String [TokenInfo]
 lexerTI str = runAlex str $ do
     let loop s = do 
         (p,_,_,_) <- alexGetInput
         tok <- alexMonadScan
         let (AlexPn _ line col) = p
+        let pos = (line, col)
         case tok of
             EOF__ -> return $ reverse s
             WS__ -> do loop s
-            _ -> do loop $ (TI tok (line, col)) : s
+            ID__ id -> do loop $ (TI (ID (id, pos)) pos) : s
+            _ -> do loop $ (TI tok pos) : s
     loop []
 
 }

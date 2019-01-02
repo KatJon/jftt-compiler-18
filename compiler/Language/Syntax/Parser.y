@@ -1,11 +1,11 @@
 {
-module Language.Parser (parser) where
+module Language.Syntax.Parser (parser) where
 
 import Control.Monad.Except
 
-import qualified Language.Lexer as L
-import qualified Language.AST as AST
-import qualified Language.Token as T
+import qualified Language.Syntax.Token as T
+import qualified Language.Syntax.Lexer as L
+import qualified Language.Syntax.AST as AST
 
 }
 
@@ -82,7 +82,7 @@ command
 
 maybeElse
     :   ELSE commands { Just $2 }
-    |       { Nothing }
+    |   {- empty -} { Nothing }
 
 iterator :   ID FROM value iterDirection { $4 $1 $3 }
 
@@ -92,19 +92,19 @@ iterDirection
 
 expression 
     :   value { AST.ExVal $1 }
-    |   value '+' value { AST.ADD $1 $3 }
-    |   value '-' value { AST.SUB $1 $3 }
-    |   value '*' value { AST.MUL $1 $3 }
-    |   value '/' value { AST.DIV $1 $3 }
-    |   value '%' value { AST.MOD $1 $3 }
+    |   value '+' value { AST.Op AST.ADD $1 $3 }
+    |   value '-' value { AST.Op AST.SUB $1 $3 }
+    |   value '*' value { AST.Op AST.MUL $1 $3 }
+    |   value '/' value { AST.Op AST.DIV $1 $3 }
+    |   value '%' value { AST.Op AST.MOD $1 $3 }
 
 condition
-    :   value '=' value { AST.EQ $1 $3}
-    |   value '!=' value { AST.NEQ $1 $3}
-    |   value '<' value { AST.LT $1 $3}
-    |   value '<=' value { AST.LEQ $1 $3}
-    |   value '>' value { AST.GT $1 $3}
-    |   value '>=' value { AST.GEQ $1 $3}
+    :   value '=' value { AST.Comp AST.EQ $1 $3}
+    |   value '!=' value { AST.Comp AST.NEQ $1 $3}
+    |   value '<' value { AST.Comp AST.LT $1 $3}
+    |   value '<=' value { AST.Comp AST.LEQ $1 $3}
+    |   value '>' value { AST.Comp AST.GT $1 $3}
+    |   value '>=' value { AST.Comp AST.GEQ $1 $3}
 
 value 
     :   identifier { AST.ValId $1 }

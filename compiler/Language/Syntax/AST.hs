@@ -1,11 +1,13 @@
-module Language.AST where
+module Language.Syntax.AST where
 
-type PlainId = String
+import Language.Common
+
+type PlainId = (String, (Int, Int))
 
 data Identifier
     = Id PlainId
-    | ArrayId String String
-    | ArrayNum String Integer
+    | ArrayId PlainId PlainId
+    | ArrayNum PlainId Integer
     deriving (Show, Eq)
 
 data Value
@@ -13,22 +15,19 @@ data Value
     | ValNum Integer
     deriving (Show, Eq)
 
-data Condition
-    = EQ Value Value
-    | NEQ Value Value
-    | LT Value Value
-    | LEQ Value Value
-    | GT Value Value
-    | GEQ Value Value
+data Comparator = EQ | NEQ | LT | LEQ | GT | GEQ
+    deriving (Show, Eq)
+
+data Condition = Comp Comparator Value Value
+    deriving (Show, Eq)
+
+data Operator = ADD | SUB | MUL | DIV | MOD
     deriving (Show, Eq)
 
 data Expression
     = ExVal Value
-    | ADD Value Value
-    | SUB Value Value
-    | MUL Value Value
-    | DIV Value Value
-    | MOD Value Value
+    | Op Operator Value Value
+    
     deriving (Show, Eq)
 
 data Iterator 

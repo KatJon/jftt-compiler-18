@@ -1,6 +1,7 @@
 module Language.Syntax.Token where
 
 import Language.Common
+import Prelude hiding (EQ, GT, LT)
 
 data Token
     -- Keywords
@@ -41,6 +42,27 @@ data Token
     | WS__ -- whitespace
     | EOF__ -- EOF
     deriving (Show, Eq)
+
+stringify :: Token -> String
+stringify ASSIGN = ":="
+stringify ADD = "+"
+stringify SUB = "-"
+stringify MUL = "*"
+stringify DIV = "/"
+stringify MOD = "%"
+stringify EQ = "="
+stringify NEQ = "!="
+stringify LT = "<"
+stringify LEQ = "<="
+stringify GT = ">"
+stringify GEQ = ">="
+stringify SEMI = ";"
+stringify COLON = ":"
+stringify LPAR = "("
+stringify RPAR = ")"
+stringify (VAL int) = show int
+stringify (ID (s, _)) = s
+stringify x = show x
 
 data TokenInfo = TI Token Position
     deriving (Show, Eq)

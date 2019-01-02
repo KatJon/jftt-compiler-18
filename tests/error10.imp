@@ -1,0 +1,8 @@
+[ Błąd w linii 6: mutacja iteratora lokalnego i ]
+DECLARE
+  a; b(10:10);
+IN
+  FOR i FROM 0 TO 9 DO 
+    i := i*i;
+  ENDFOR
+END

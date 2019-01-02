@@ -1,7 +1,11 @@
-.PHONY: all kompilator
+.PHONY: kompilator
 all: kompilator
 
-kompilator:
-	alex --ghc Language/Syntax/Lexer.x
-	happy --ghc Language/Syntax/Parser.y
+Language/Syntax/Lexer.hs: Language/Syntax/Lexer.x
+	alex --ghc $^
+
+Language/Syntax/Parser.hs: Language/Syntax/Parser.y
+	happy --ghc $^
+
+kompilator: Language/Syntax/Lexer.hs Language/Syntax/Parser.hs
 	ghc -outputdir dist --make Main.hs -o $@

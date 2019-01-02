@@ -73,15 +73,15 @@ commands
 
 command 
     :   identifier ':=' expression ';' { AST.ASSIGN $1 $3 }
-    |   IF condition THEN commands maybeElse ENDIF { AST.IF $2 $4 $5 }
-    |   WHILE condition DO commands ENDWHILE { AST.WHILE $2 $4 }
-    |   DO commands WHILE condition ENDDO { AST.DO_WHILE $2 $4 }
-    |   FOR iterator DO commands ENDFOR { AST.FOR $2 $4 }
+    |   IF condition THEN commands maybeElse ENDIF { AST.IF $2 (reverse $4) $5 }
+    |   WHILE condition DO commands ENDWHILE { AST.WHILE $2 (reverse $4) }
+    |   DO commands WHILE condition ENDDO { AST.DO_WHILE (reverse $2) $4 }
+    |   FOR iterator DO commands ENDFOR { AST.FOR $2 (reverse $4) }
     |   READ identifier ';' { AST.READ $2 }
     |   WRITE value ';' { AST.WRITE $2 }
 
 maybeElse
-    :   ELSE commands { Just $2 }
+    :   ELSE commands { Just (reverse $2) }
     |   {- empty -} { Nothing }
 
 iterator :   ID FROM value iterDirection { $4 $1 $3 }
@@ -120,8 +120,8 @@ identifier
 parseError :: [T.TokenInfo] -> Except String a
 parseError ((T.TI tok pos):_) = 
     let (line, col) = pos
-        msg = "SYNTAX ERROR: Unexpected token: " ++ show tok
-            ++ " at " ++ show line ++ ":" ++ show col
+        msg = "SYNTAX ERROR: Unexpected token: " ++ T.stringify tok
+            ++ " at line " ++ show line ++ " column " ++ show col
     in throwError msg
 parseError [] = throwError "Unexpected EOF"
 

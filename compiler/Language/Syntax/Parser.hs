@@ -567,7 +567,7 @@ happyReduction_8 (_ `HappyStk`
 	_ `HappyStk`
 	happyRest)
 	 = HappyAbsSyn7
-		 (AST.IF happy_var_2 happy_var_4 happy_var_5
+		 (AST.IF happy_var_2 (reverse happy_var_4) happy_var_5
 	) `HappyStk` happyRest
 
 #if __GLASGOW_HASKELL__ >= 710
@@ -580,7 +580,7 @@ happyReduction_9 (_ `HappyStk`
 	_ `HappyStk`
 	happyRest)
 	 = HappyAbsSyn7
-		 (AST.WHILE happy_var_2 happy_var_4
+		 (AST.WHILE happy_var_2 (reverse happy_var_4)
 	) `HappyStk` happyRest
 
 #if __GLASGOW_HASKELL__ >= 710
@@ -593,7 +593,7 @@ happyReduction_10 (_ `HappyStk`
 	_ `HappyStk`
 	happyRest)
 	 = HappyAbsSyn7
-		 (AST.DO_WHILE happy_var_2 happy_var_4
+		 (AST.DO_WHILE (reverse happy_var_2) happy_var_4
 	) `HappyStk` happyRest
 
 #if __GLASGOW_HASKELL__ >= 710
@@ -606,7 +606,7 @@ happyReduction_11 (_ `HappyStk`
 	_ `HappyStk`
 	happyRest)
 	 = HappyAbsSyn7
-		 (AST.FOR happy_var_2 happy_var_4
+		 (AST.FOR happy_var_2 (reverse happy_var_4)
 	) `HappyStk` happyRest
 
 #if __GLASGOW_HASKELL__ >= 710
@@ -637,7 +637,7 @@ happyReduce_14 = happySpecReduce_2  8# happyReduction_14
 happyReduction_14 (HappyAbsSyn6  happy_var_2)
 	_
 	 =  HappyAbsSyn8
-		 (Just happy_var_2
+		 (Just (reverse happy_var_2)
 	)
 happyReduction_14 _ _  = notHappyAtAll 
 
@@ -927,8 +927,8 @@ happySeq = happyDontSeq
 parseError :: [T.TokenInfo] -> Except String a
 parseError ((T.TI tok pos):_) = 
     let (line, col) = pos
-        msg = "SYNTAX ERROR: Unexpected token: " ++ show tok
-            ++ " at " ++ show line ++ ":" ++ show col
+        msg = "SYNTAX ERROR: Unexpected token: " ++ T.stringify tok
+            ++ " at line " ++ show line ++ " column " ++ show col
     in throwError msg
 parseError [] = throwError "Unexpected EOF"
 

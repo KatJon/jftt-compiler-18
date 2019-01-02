@@ -2,6 +2,7 @@ module Language.Validation.TypeChecker where
 
 import Control.Monad.State
 import Control.Monad.Except
+import Data.List
 import qualified Data.Map.Strict as Map
 
 import qualified Language.Syntax.AST as AST
@@ -13,6 +14,8 @@ data SemanticError
     | ArrayRange String Position
     -- TypeMismatch : Expected Type, Actual Type
     | TypeMismatch SymbolType SymbolType String Position
+    | OutOfRange String Position
+    | LocalIteratorMutation String Position
     deriving (Eq)
 
 showPos (line, col) = "line " ++ show line ++ " column " ++ show col
@@ -32,8 +35,17 @@ instance Show SemanticError where
             ++ "  expected: " ++ symbolTypeName expected ++ "\n"
             ++ "  actual:   " ++ symbolTypeName actual ++ "\n"
             ++ "  at " ++ showPos pos
+    show (OutOfRange id pos) =
+        "Error: Index outside of range of the array " ++ id
+            ++ " at " ++ showPos pos
+    show (LocalIteratorMutation id pos) = 
+        "Error: Mutation of local iterator " ++ id
+            ++ " at " ++ showPos pos
  
 semanticError = throwError . show
+
+eitherShowError :: (String -> Position -> SemanticError) -> (String, Position) -> Either String a
+eitherShowError err x = Left . show $ uncurry err x
 
 data Program = Program SymbolTable AST.Commands
     deriving (Show, Eq)
@@ -72,37 +84,114 @@ validateDeclarations decl = runExcept $ execStateT (loop decl) Map.empty
             | otherwise = return ()
 
 validateUsage :: SymbolTable -> AST.Commands -> Either String ()
-validateUsage symTab cmds = loop cmds []  
+validateUsage symTab cmds = checkCmds cmds []  
     where
-        loop :: AST.Commands -> [(String, SymbolRecord)] -> Either String ()
-        loop [] _ = return ()
-        loop (x:xs) local = do
+        checkCmds :: AST.Commands -> [(String, SymbolRecord)] -> Either String ()
+        checkCmds [] _ = return ()
+        checkCmds (x:xs) local = do
             checkIdUsage x local
-            loop xs local
+            checkCmds xs local
 
         checkIdUsage x local = case x of
             AST.ASSIGN id expr -> checkAssign id expr local
-            AST.IF cond cmds elseCmds -> checkIf cond elseCmds local
+            AST.IF cond cmds elseCmds -> checkIf cond cmds elseCmds local
             AST.WHILE cond cmds -> checkWhile cond cmds local
             AST.DO_WHILE cond cmds -> checkDoWhile cond cmds local
             AST.FOR iter cmds -> checkFor iter cmds local
-            AST.READ id -> checkId id local
+            AST.READ id -> checkRead id local
             AST.WRITE val -> checkVal val local
         
-        checkId (AST.Id id) local =
-            case (fst id) `Map.lookup` symTab of
-                Nothing -> Left . show $ uncurry UndefinedVariable id
-                Just (SR pos (Scalar)) -> return ()
-                _ -> Left . show $ uncurry (TypeMismatch Scalar (Array 0 0)) id
+        findById id local = fmap snd $ find (\x -> fst x == fst id) local
 
-        checkAssign id expr local = return ()
+        checkLocalIteratorMutation (AST.Id id) local =
+            case id `findById` local of
+                Just _ -> eitherShowError LocalIteratorMutation id
+                Nothing -> return ()
+        -- Local iterators can only be scalar        
+        checkLocalIteratorMutation _ _ = return ()
 
-        checkIf cond maybeElseCmds local = return ()
+        checkId (AST.Id id) local = do
+            let mismatch = eitherShowError (TypeMismatch (Array 0 0) Scalar) id
+            case id `findById` local of
+                Just (SR _ Scalar) -> return ()
+                Just _ -> mismatch
+                Nothing -> case (fst id) `Map.lookup` symTab of
+                    Nothing -> eitherShowError UndefinedVariable id
+                    Just (SR _ (Scalar)) -> return ()
+                    _ -> mismatch
+        
+        checkId (AST.ArrayId id arg) local = do
+            let mismatch = eitherShowError (TypeMismatch Scalar (Array 0 0)) id
+            let next = checkId (AST.Id arg) local
+            case id `findById` local of
+                Just (SR _ (Array _ _)) -> next
+                Just _ -> mismatch
+                Nothing -> case (fst id) `Map.lookup` symTab of
+                    Nothing -> eitherShowError UndefinedVariable id
+                    Just (SR _ (Array _ _)) -> next
+                    _ -> mismatch
 
-        checkWhile cond cmds local = return ()
+        checkId (AST.ArrayNum id num) local = do
+            let mismatch = eitherShowError (TypeMismatch Scalar (Array 0 0)) id
+            case id `findById` local of
+                Just (SR _ (Array l r)) -> checkRange l r
+                Just _ -> mismatch
+                Nothing -> case (fst id) `Map.lookup` symTab of
+                    Nothing -> eitherShowError UndefinedVariable id
+                    Just (SR _ (Array l r)) -> checkRange l r
+                    _ -> mismatch
+            where   
+                checkRange l r 
+                    | l <= num && num <= r = return ()
+                    | otherwise = eitherShowError OutOfRange id
+ 
+        checkVal (AST.ValNum _) _ = return ()
+        checkVal (AST.ValId id) local = checkId id local
 
-        checkDoWhile cond cmds local = return ()
+        checkExpr (AST.ExVal val) local = checkVal val local
+        checkExpr (AST.Op _ left right) local = do
+            checkVal left local
+            checkVal right local
 
-        checkFor iter cmds local = return ()
+        checkCond (AST.Comp _ left right) local = do
+            checkVal left local
+            checkVal right local
 
-        checkVal val local = return ()
+        checkAssign id expr local = do
+            checkId id local
+            checkExpr expr local
+            checkLocalIteratorMutation id local
+        
+        checkWhile cond cmds local = do
+            checkCond cond local
+            checkCmds cmds local
+
+        checkDoWhile cmds cond local = do
+            checkCmds cmds local
+            checkCond cond local
+
+        checkIf cond cmds maybeElseCmds local = do
+            checkCond cond local
+            checkCmds cmds local
+            case maybeElseCmds of
+                Just elseCmds -> checkCmds cmds local
+                Nothing -> return ()
+
+        checkIter (AST.IterTo id left right) local = do
+            checkVal left local
+            checkVal right local
+            return id
+
+        checkIter (AST.IterDownTo id left right) local = do
+            checkVal left local 
+            checkVal right local
+            return id
+
+        checkFor iter cmds local = do
+            id <- checkIter iter local
+            let local' = (fst id, SR (snd id) Scalar) : local
+            checkCmds cmds local'
+
+        checkRead id local = do
+            checkId id local
+            checkLocalIteratorMutation id local

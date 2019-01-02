@@ -27,7 +27,6 @@ data Operator = ADD | SUB | MUL | DIV | MOD
 data Expression
     = ExVal Value
     | Op Operator Value Value
-    
     deriving (Show, Eq)
 
 data Iterator 

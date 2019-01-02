@@ -32,3 +32,11 @@ Biblioteka zawierająca funkcyjne struktury danych.
 ```
 cabal install 'containers >= 0.5.11.0'
 ```
+
+* mtl >= 2.2.2
+
+Biblioteka zawierająca transformatory monad
+
+```
+cabal install 'mtl >= 2.2.2'
+```

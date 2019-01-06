@@ -22,5 +22,5 @@ main = do
             let (TC.Program st cmds) = prog
             let memory = buildMemory st
             let stac = getTAC memory cmds
+            putStrLn $ take 20 $ repeat '-'
             putStrLn . unlines . fmap show $ stac
-            print prog

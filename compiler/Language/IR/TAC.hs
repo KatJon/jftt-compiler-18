@@ -3,7 +3,6 @@ module Language.IR.TAC where
 import qualified Language.Syntax.AST as AST
 
 type VarID = Integer
-type TempID = Integer
 
 data Value
     = VNum Integer
@@ -26,19 +25,21 @@ instance Show Mem where
     show (MArrVar arr x) = "P[" ++ show arr ++ "[" ++ "P[" ++ show x ++ "]" ++ "]"
 
 data Expr
-    = EAdd TempID TempID
-    | ESub TempID TempID
-    | EMul TempID TempID
-    | EDiv TempID TempID
-    | EMod TempID TempID
+    = EVal Value
+    | EAdd Value Value
+    | ESub Value Value
+    | EMul Value Value
+    | EDiv Value Value
+    | EMod Value Value
     deriving (Eq)
 
 instance Show Expr where
-    show (EAdd l r) = "t" ++ show l ++ " + " ++ "t" ++ show r
-    show (ESub l r) = "t" ++ show l ++ " - " ++ "t" ++ show r
-    show (EMul l r) = "t" ++ show l ++ " * " ++ "t" ++ show r
-    show (EDiv l r) = "t" ++ show l ++ " / " ++ "t" ++ show r
-    show (EMod l r) = "t" ++ show l ++ " % " ++ "t" ++ show r
+    show (EVal v) = show v
+    show (EAdd l r) = show l ++ " + " ++ show r
+    show (ESub l r) = show l ++ " - " ++ show r
+    show (EMul l r) = show l ++ " * " ++ show r
+    show (EDiv l r) = show l ++ " / " ++ show r
+    show (EMod l r) = show l ++ " % " ++ show r
 
 data Comp
     = CEq Value Value
@@ -57,25 +58,31 @@ instance Show Comp where
     show (CGt l r) = show l ++ " > " ++ show r
     show (CGe l r) = show l ++ " >= " ++ show r
 
+negComp :: Comp -> Comp
+negComp (CEq l r) = CNeq l r
+negComp (CNeq l r) = CEq l r
+negComp (CLt l r) = CGe l r
+negComp (CLe l r) = CGt l r
+negComp (CGt l r) = CLe l r
+negComp (CGe l r) = CLt l r
+
 type Label = String
 
 data TAC
     = TComment Label
     | TLabel Label
-    | TAssignTemp TempID Value
-    | TAssignTempExpr TempID Expr
-    | TAssignMem Mem TempID
+    | TAssign Mem Expr
+    | TRead Mem
+    | TWrite Value
+    | TIf Comp Label
+    | TJump Label
     deriving (Eq)
 
 instance Show TAC where
     show (TLabel s) = s ++ ":"
     show (TComment s) = "# " ++ s
-    show (TAssignTemp t v) = "t" ++ show t ++ " <- " ++ show v
-    show (TAssignTempExpr t e) =  "t" ++ show t ++ " <- " ++ show e
-    show (TAssignMem mem t) = show mem ++ " <- " ++ show t
-
-code = unlines . fmap show $ [
-    TAssignTemp 1 (VNum 3),
-    TAssignTemp 2 (VMem (MVar 0)),
-    TAssignTempExpr 3 (EAdd 1 2)
-    ]
+    show (TAssign mem v) = show mem ++ " <- " ++ show v
+    show (TRead mem) = "read " ++ show mem
+    show (TWrite val) = "write " ++ show val
+    show (TIf cmp label) = "if " ++ show cmp ++ " goto " ++ label
+    show (TJump label) = "goto " ++ label

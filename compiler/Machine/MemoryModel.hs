@@ -9,18 +9,18 @@ type VarId = Integer
 data MemoryEntry
     = Var String VarId
     | Array String VarId Integer Integer
-    | Iterator String VarId
+    | Iterator String VarId VarId
     deriving (Show, Eq)
 
 getVarName :: MemoryEntry -> String
 getVarName (Var s _) = s
 getVarName (Array s _ _ _) = s
-getVarName (Iterator s _) = s
+getVarName (Iterator s _ _) = s
 
 getVarId :: MemoryEntry -> VarId
 getVarId (Var _ id) = id
 getVarId (Array _ id _ _) = id
-getVarId (Iterator _ id) = id
+getVarId (Iterator _ id _) = id
 
 data Memory = Memory {
     varmap :: Map.Map String MemoryEntry,
@@ -48,6 +48,6 @@ buildMemory st = run symbols Map.empty [] 0
 
 withIterator :: Memory -> String -> Memory
 withIterator (Memory vmap vars it n) name =
-    let entry = Iterator name n
+    let entry = Iterator name n (n+1)
         vmap' = Map.insert name entry vmap 
-    in Memory vmap' vars (entry:it) (n+1)
+    in Memory vmap' vars (entry:it) (n+2)

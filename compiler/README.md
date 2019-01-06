@@ -40,3 +40,11 @@ Biblioteka zawierająca transformatory monad
 ```
 cabal install 'mtl >= 2.2.2'
 ```
+
+* array >= 0.5.2.0
+
+Biblioteka zawierająca interfejs funkcyjny do tablic
+
+```
+cabal install 'array >= 0.5.2.0'
+```

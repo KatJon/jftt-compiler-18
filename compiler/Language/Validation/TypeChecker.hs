@@ -124,7 +124,7 @@ validateUsage symTab cmds = checkCmds cmds []
             let mismatch = eitherShowError (TypeMismatch Scalar (Array 0 0)) id
             let next = checkId (AST.Id arg) local
             case id `findById` local of
-                Just (SR _ (Array _ _)) -> next
+                -- Local ids can only be scalars
                 Just _ -> mismatch
                 Nothing -> case (fst id) `Map.lookup` symTab of
                     Nothing -> eitherShowError UndefinedVariable id
@@ -134,7 +134,7 @@ validateUsage symTab cmds = checkCmds cmds []
         checkId (AST.ArrayNum id num) local = do
             let mismatch = eitherShowError (TypeMismatch Scalar (Array 0 0)) id
             case id `findById` local of
-                Just (SR _ (Array l r)) -> checkRange l r
+                -- Local ids can only be scalars
                 Just _ -> mismatch
                 Nothing -> case (fst id) `Map.lookup` symTab of
                     Nothing -> eitherShowError UndefinedVariable id

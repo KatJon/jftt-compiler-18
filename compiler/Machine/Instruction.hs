@@ -2,6 +2,10 @@ module Machine.Instruction where
 
 import Machine.Register
 
+import qualified Data.Map.Strict as Map
+
+type Label = String
+
 data Instruction
     -- Cost 100
     = GET Reg
@@ -17,16 +21,20 @@ data Instruction
     | HALF Reg
     | INC Reg
     | DEC Reg
-    | JUMP Int
-    | JZERO Reg Int
-    | JODD Reg Int
+    | JUMP Integer
+    | JZERO Reg Integer
+    | JODD Reg Integer
     -- Cost 0
     | HALT
     -- Additional "artificial" instructions, simplifying target code
-    | JLABEL Int
-    | LABEL Int
+    | COMMENT String
+    | JLABEL Label
+    | JZEROLABEL Reg Label
+    | JODDLABEL Reg Label
+    | LABEL Label
 
 generate :: Instruction -> String
+generate (COMMENT s) = "# " ++ s
 generate (GET r) = "GET " ++ (show r)
 generate (PUT r) = "PUT " ++ (show r)
 generate (LOAD r) = "LOAD " ++ (show r)
@@ -43,9 +51,37 @@ generate (JODD r i) = "JODD " ++ (show r) ++ " " ++ (show i)
 generate (HALT) = "HALT"
 -- Artificial instructions
 generate (JLABEL _) = error "Cannot generate code for JLABEL"
+generate (JZEROLABEL _ _) = error "Cannot generate code for JZEROLABEL"
+generate (JODDLABEL _ _) = error "Cannot generate code for JODDLABEL"
 generate (LABEL _) = error "Cannot generate code for LABEL"
 
 instance Show Instruction where
-    show (JLABEL i) = "(JUMP_LABEL " ++ (show i) ++ ")"
-    show (LABEL i) = "(LABEL " ++ (show i) ++ ")"
-    show instr = "(" ++ generate instr ++ ")"
+    show (JLABEL i) = "JUMP_LABEL " ++ show i
+    show (JZEROLABEL r i) = "JZERO_LABEL " ++ show r ++ " " ++ show i
+    show (JODDLABEL r i) = "JODD_LABEL " ++ show r ++ " " ++ show i
+    show (LABEL i) = "LABEL " ++ show i
+    show instr = generate instr
+
+fillLabels :: [Instruction] -> [Instruction]
+fillLabels instructions = substLabels instructions []
+    where
+        substLabels [] acc = reverse acc
+        substLabels (x:xs) acc = case x of
+            LABEL _  -> substLabels xs acc
+            COMMENT _ -> substLabels xs acc
+            JLABEL i -> let instr = JUMP $ (Map.!) labelPos i
+                in substLabels xs (instr:acc)
+            JZEROLABEL r i -> let instr = JZERO r $ (Map.!) labelPos i
+                in substLabels xs (instr:acc)
+            JODDLABEL r i -> let instr = JODD r $ (Map.!) labelPos i
+                in substLabels xs (instr:acc)
+            instr -> substLabels xs (instr:acc)
+
+        labelPos :: Map.Map String Integer
+        labelPos = getLabelPos instructions [] 0
+
+        getLabelPos [] posList _ = Map.fromList posList
+        getLabelPos (x:xs) posList i = case x of
+            LABEL s -> getLabelPos xs ((s, i):posList) i
+            COMMENT s -> getLabelPos xs posList i
+            _ -> getLabelPos xs posList (i + 1)

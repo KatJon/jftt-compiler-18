@@ -32,6 +32,7 @@ data Instruction
     | JZEROLABEL Reg Label
     | JODDLABEL Reg Label
     | LABEL Label
+    | OFFSET (Integer -> Instruction) Integer
 
 generate :: Instruction -> String
 generate (COMMENT s) = "# " ++ s
@@ -54,28 +55,32 @@ generate (JLABEL _) = error "Cannot generate code for JLABEL"
 generate (JZEROLABEL _ _) = error "Cannot generate code for JZEROLABEL"
 generate (JODDLABEL _ _) = error "Cannot generate code for JODDLABEL"
 generate (LABEL _) = error "Cannot generate code for LABEL"
+generate (OFFSET _ _) = error "Cannot generate code for OFFSET"
 
 instance Show Instruction where
     show (JLABEL i) = "JUMP_LABEL " ++ show i
     show (JZEROLABEL r i) = "JZERO_LABEL " ++ show r ++ " " ++ show i
     show (JODDLABEL r i) = "JODD_LABEL " ++ show r ++ " " ++ show i
     show (LABEL i) = "LABEL " ++ show i
+    show (OFFSET jmp off) = "OFFSET (" ++ show (jmp 0) ++ ") + " ++ show off
     show instr = generate instr
 
 fillLabels :: [Instruction] -> [Instruction]
-fillLabels instructions = substLabels instructions []
+fillLabels instructions = substLabels instructions 0 []
     where
-        substLabels [] acc = reverse acc
-        substLabels (x:xs) acc = case x of
-            LABEL _  -> substLabels xs acc
-            COMMENT _ -> substLabels xs acc
+        substLabels [] k acc = reverse acc
+        substLabels (x:xs) k acc = case x of
+            LABEL _  -> substLabels xs k acc
+            OFFSET jump off -> let instr = jump $ k + off
+                in substLabels xs (k+1) (instr:acc)
+            COMMENT _ -> substLabels xs k acc
             JLABEL i -> let instr = JUMP $ (Map.!) labelPos i
-                in substLabels xs (instr:acc)
+                in substLabels xs (k+1) (instr:acc)
             JZEROLABEL r i -> let instr = JZERO r $ (Map.!) labelPos i
-                in substLabels xs (instr:acc)
+                in substLabels xs (k+1) (instr:acc)
             JODDLABEL r i -> let instr = JODD r $ (Map.!) labelPos i
-                in substLabels xs (instr:acc)
-            instr -> substLabels xs (instr:acc)
+                in substLabels xs (k+1) (instr:acc)
+            instr -> substLabels xs (k+1) (instr:acc)
 
         labelPos :: Map.Map String Integer
         labelPos = getLabelPos instructions [] 0

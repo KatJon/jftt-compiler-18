@@ -1,0 +1,10 @@
+DECLARE
+    b;
+IN
+    READ b;
+    IF b > 5 THEN
+        WRITE 1;
+    ELSE
+        WRITE 0;
+    ENDIF
+END

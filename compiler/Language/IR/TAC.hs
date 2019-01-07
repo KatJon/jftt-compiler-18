@@ -21,8 +21,8 @@ data Mem
 
 instance Show Mem where
     show (MVar x) = "P[" ++ show x ++ "]"
-    show (MArrNum arr i) = "P[" ++ show arr ++ "[" ++ show i ++ "]"
-    show (MArrVar arr x) = "P[" ++ show arr ++ "[" ++ "P[" ++ show x ++ "]" ++ "]"
+    show (MArrNum arr i) = "P[" ++ show arr ++ "[" ++ show i ++ "]]"
+    show (MArrVar arr x) = "P[" ++ show arr ++ "[" ++ "P[" ++ show x ++ "]]"
 
 data Expr
     = EVal Value

@@ -169,6 +169,7 @@ commandSTAC mem cmd = case cmd of
                     ]
                     ++ ops
                     ++ [
+                    TInc $ MVar it,
                     TJump startLabel,
                     TLabel endLabel
                     ]
@@ -190,6 +191,7 @@ commandSTAC mem cmd = case cmd of
                     ]
                     ++ ops
                     ++ [
+                    TDecOrJumpZero (MVar it) endLabel,
                     TJump startLabel,
                     TLabel endLabel
                     ]

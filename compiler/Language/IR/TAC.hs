@@ -76,6 +76,9 @@ data TAC
     | TWrite Value
     | TIf Comp Label
     | TJump Label
+    | TInc Mem
+    | TDec Mem
+    | TDecOrJumpZero Mem Label
     deriving (Eq)
 
 instance Show TAC where
@@ -86,3 +89,6 @@ instance Show TAC where
     show (TWrite val) = "write " ++ show val
     show (TIf cmp label) = "if " ++ show cmp ++ " goto " ++ label
     show (TJump label) = "goto " ++ label
+    show (TInc mem) = show mem ++ "++"
+    show (TDec mem) = show mem ++ "--"
+    show (TDecOrJumpZero mem label) = "if " ++ show mem ++ "-- = 0 goto " ++ label 

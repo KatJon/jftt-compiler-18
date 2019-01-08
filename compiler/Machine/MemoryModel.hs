@@ -69,7 +69,10 @@ data FlatMemory = FM Integer Integer (Map.Map Integer MemAddress)
     deriving (Show)
 
 flattenMemory :: Memory -> (VarId -> MemAddress)
-flattenMemory mem id = if id > maxId then nextAddr + id - maxId else (Map.!) idMap id
+flattenMemory mem id = 
+        if id > maxId 
+        then AddrVar $ nextAddr + id - maxId
+        else (Map.!) idMap id
     where
         sorted = sortOn getVarPriority $ sortOn getVarId (vars mem)
         (FM nextAddr maxId idMap) = process 0 sorted [] 0

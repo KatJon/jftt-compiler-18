@@ -16,14 +16,25 @@ codeGen tac getAddress = fillLabels $ (tac >>= generate) ++ [HALT]
         generate (TRead target) = genRead target
         generate (TWrite source) = genWrite source
         generate (TIf comp lbl) = genIf comp lbl
+        generate (TInc mem) = genInc mem
+        generate (TDec mem) = genDec mem
+        generate (TDecOrJumpZero mem lbl) = genDecOrJump mem lbl
+
+        genDecOrJump mem lbl = memToReg mem B 
+            ++ [JZEROLABEL B lbl, DEC B]
+            ++ regToMem B mem
+
+        genInc mem = memToReg mem B ++ [INC B] ++ regToMem B mem
+
+        genDec mem = memToReg mem B ++ [DEC B] ++ regToMem B mem
 
         genRead target = [GET B] ++ regToMem B target
 
         genWrite val = valToReg val B ++ [PUT B]
 
         genIf comp lbl = case comp of
-            CEq l r -> cmpCEq l r ++ [JLABEL lbl]
-            CNeq l r -> cmpCEq l r ++ [OFFSET JUMP 2, JLABEL lbl]
+            CEq l r -> cmpCEq l r ++ [JZEROLABEL B lbl]
+            CNeq l r -> cmpCEq l r ++ [OFFSET (JZERO B) 2, JLABEL lbl]
             CGe l r -> cmpCGe l r ++ [JZEROLABEL B lbl]
             CLt l r -> cmpCGe l r ++ [OFFSET (JZERO B) 2, JLABEL lbl]
             CLe l r -> cmpCLe l r ++ [JZEROLABEL B lbl]
@@ -33,11 +44,8 @@ codeGen tac getAddress = fillLabels $ (tac >>= generate) ++ [HALT]
                 cmpCEq u v = valToReg u B ++ valToReg v C 
                     ++ [COPY D B, 
                         SUB B C, 
-                        OFFSET (JZERO B) 2, 
-                        OFFSET JUMP 4,
                         SUB C D,
-                        OFFSET (JZERO C) 2,
-                        OFFSET JUMP 2
+                        ADD B C
                         ]
                 
                 cmpCGe u v = valToReg u C ++ valToReg v B
@@ -82,7 +90,7 @@ codeGen tac getAddress = fillLabels $ (tac >>= generate) ++ [HALT]
                 let (AddrArr arraddr offset) = getAddress arrid in 
                 let address = max (arraddr + i - offset) 0 in
                 genConst A address ++ [LOAD reg]
-            MArrVar arrid varid -> 
+            MArrVar arrid varid ->
                 let (AddrArr arraddr offset) = getAddress arrid in
                 let (AddrVar varaddr) = getAddress varid in
                 genConst A varaddr ++ [LOAD H]
@@ -100,8 +108,82 @@ codeGen tac getAddress = fillLabels $ (tac >>= generate) ++ [HALT]
                         else half ++ [ADD reg reg, INC reg]
 
 
-        macroMul reg1 reg2 = error "macroMul not implemented"
+        macroMul reg1 reg2 = [
+            COPY H reg1,
+            SUB reg1 reg2,
+            OFFSET (JZERO reg1) 2,
+            OFFSET JUMP 4,
+            COPY reg1 reg2,
+            COPY reg2 H,
+            COPY H reg1,
+            SUB reg1 reg1,
+            OFFSET (JODD reg2) 2,
+            OFFSET JUMP 2,
+            ADD reg1 H,
+            ADD H H,
+            HALF reg2,
+            OFFSET (JZERO reg2) 2,
+            OFFSET JUMP (-6)
+            ]
+        
+        quotRem' reg1 reg2 = [
+            SUB D D,
+            SUB E E,
+            OFFSET (JZERO reg2) 15, -- __end__,
+            -- GET NUMBER OF BITS
+            COPY G reg1,
+            SUB F F,
+            OFFSET (JZERO G) 4,
+            HALF G,
+            INC F,
+            OFFSET JUMP (-3),
+            -- DO DIVISION
+            -- F - log B, H - reversed bits of B
+            DEC F,
+            PUT F,
+            PUT H
+            -- MAIN LOOP
+            -- OFFSET (JZERO F) 0, -- __end__,
+            -- ADD D D,
+            -- OFFSET (JODD reg1) 2,
+            -- OFFSET JUMP 2,
+            -- INC D
+            ]
 
-        macroDiv reg1 reg2 = error "macroDiv not implemented"
+        quotRem reg1 reg2 = [
+            SUB D D,
+            SUB E E,
+            OFFSET (JZERO reg2) 23, -- END
+            -- DIV
+            COPY E reg1,
+            COPY F reg2,
+            SUB A A,
+            -- FINDMAX
+            COPY H F,
+            SUB H reg1,
+            OFFSET (JZERO H) 2,
+            OFFSET JUMP 4,
+            ADD F F,
+            INC A,
+            OFFSET JUMP (-6), -- JUMP FINDMAX
+            HALF F,
 
-        macroMod reg1 reg2 = error "macroMod not implemented"
+            -- DIVLOOP
+            OFFSET (JZERO A) 11,-- JUMP END DIVLOOP
+            ADD D D,
+            COPY H F,
+            SUB H E,
+            OFFSET (JZERO H) 2,
+            OFFSET JUMP 3,
+            INC D,
+            SUB E F,
+            HALF F,
+            DEC A,
+            OFFSET JUMP (-10) -- JUMP DIVLOOP
+            -- END DIVLOOP
+            -- END
+            ]
+        
+        macroDiv reg1 reg2 = quotRem reg1 reg2 ++ [COPY reg1 D]
+
+        macroMod reg1 reg2 = quotRem reg1 reg2 ++ [COPY reg1 E]

@@ -8,6 +8,7 @@ for i in tests/*.imp; do
 done
 
 TESTS=(
+    slowik0
     program0
     program1
     program2

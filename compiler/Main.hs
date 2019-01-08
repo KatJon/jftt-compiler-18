@@ -21,7 +21,6 @@ main = do
         let (infile : outfile : _) = args
         compile infile outfile
 
-
 debug = False
 
 compile :: String -> String -> IO ()

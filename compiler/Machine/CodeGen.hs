@@ -109,6 +109,7 @@ codeGen tac getAddress = fillLabels $ (tac >>= generate) ++ [HALT]
 
 
         macroMul reg1 reg2 = [
+            --
             COPY H reg1,
             SUB reg1 reg2,
             OFFSET (JZERO reg1) 2,
@@ -126,30 +127,6 @@ codeGen tac getAddress = fillLabels $ (tac >>= generate) ++ [HALT]
             OFFSET JUMP (-6)
             ]
         
-        quotRem' reg1 reg2 = [
-            SUB D D,
-            SUB E E,
-            OFFSET (JZERO reg2) 15, -- __end__,
-            -- GET NUMBER OF BITS
-            COPY G reg1,
-            SUB F F,
-            OFFSET (JZERO G) 4,
-            HALF G,
-            INC F,
-            OFFSET JUMP (-3),
-            -- DO DIVISION
-            -- F - log B, H - reversed bits of B
-            DEC F,
-            PUT F,
-            PUT H
-            -- MAIN LOOP
-            -- OFFSET (JZERO F) 0, -- __end__,
-            -- ADD D D,
-            -- OFFSET (JODD reg1) 2,
-            -- OFFSET JUMP 2,
-            -- INC D
-            ]
-
         quotRem reg1 reg2 = [
             SUB D D,
             SUB E E,

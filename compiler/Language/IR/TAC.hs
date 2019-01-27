@@ -78,6 +78,7 @@ data TAC
     | TJump Label
     | TInc Mem
     | TDec Mem
+    | TJZero Mem Label
     | TDecOrJumpZero Mem Label
     deriving (Eq)
 

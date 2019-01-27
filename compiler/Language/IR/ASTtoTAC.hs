@@ -154,7 +154,7 @@ commandSTAC mem cmd = case cmd of
         forSTAC iter cmds = case iter of
             AST.IterTo (id,_) from to -> do
                 let mem' = withIterator mem id
-                (it, end) <- getIterator mem' id
+                (it, counter) <- getIterator mem' id
                 fromv <- getValue from
                 tov <- getValue to
                 startLabel <- getLabel
@@ -162,21 +162,22 @@ commandSTAC mem cmd = case cmd of
                 endLabel <- getLabel
 
                 return $ [
+                    TIf (CGt fromv tov) endLabel,
                     TAssign (MVar it) $ EVal fromv,
-                    TAssign (MVar end) $ EVal tov,
-                    TLabel startLabel,
-                    TIf (CGt (VMem (MVar it)) (VMem (MVar end))) endLabel
+                    TAssign (MVar counter) $ ESub tov fromv,
+                    TLabel startLabel
                     ]
                     ++ ops
                     ++ [
                     TInc $ MVar it,
+                    TDecOrJumpZero (MVar counter) endLabel,
                     TJump startLabel,
                     TLabel endLabel
                     ]
 
             AST.IterDownTo (id,_) from downto -> do
                 let mem' = withIterator mem id
-                (it, end) <- getIterator mem' id
+                (it, counter) <- getIterator mem' id
                 fromv <- getValue from
                 downtov <- getValue downto
                 startLabel <- getLabel
@@ -184,14 +185,15 @@ commandSTAC mem cmd = case cmd of
                 endLabel <- getLabel
 
                 return $ [
+                    TIf (CLt fromv downtov) endLabel,
                     TAssign (MVar it) $ EVal fromv,
-                    TAssign (MVar end) $ EVal downtov,
-                    TLabel startLabel,
-                    TIf (CLt (VMem (MVar it)) (VMem (MVar end))) endLabel
+                    TAssign (MVar counter) $ ESub fromv downtov,
+                    TLabel startLabel
                     ]
                     ++ ops
                     ++ [
-                    TDecOrJumpZero (MVar it) endLabel,
+                    TDec $ MVar it,
+                    TDecOrJumpZero (MVar counter) endLabel,
                     TJump startLabel,
                     TLabel endLabel
                     ]

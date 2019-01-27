@@ -19,10 +19,14 @@ codeGen tac getAddress = fillLabels $ (tac >>= generate) ++ [HALT]
         generate (TInc mem) = genInc mem
         generate (TDec mem) = genDec mem
         generate (TDecOrJumpZero mem lbl) = genDecOrJump mem lbl
+        generate (TJZero mem lbl) = genJZero mem lbl
 
         genDecOrJump mem lbl = memToReg mem B 
             ++ [JZEROLABEL B lbl, DEC B]
             ++ regToMem B mem
+
+        genJZero mem lbl = memToReg mem B
+            ++ [JZEROLABEL B lbl]
 
         genInc mem = memToReg mem B ++ [INC B] ++ regToMem B mem
 
@@ -43,7 +47,7 @@ codeGen tac getAddress = fillLabels $ (tac >>= generate) ++ [HALT]
             where   
                 cmpCEq u v = valToReg u B ++ valToReg v C 
                     ++ [COPY D B, 
-                        SUB B C, 
+                        SUB B C,
                         SUB C D,
                         ADD B C
                         ]
